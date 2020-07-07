@@ -1,0 +1,93 @@
+Easy Application Questions
+
+1) Sensor Data
+SET search_path TO tack;
+SELECT  sensor_time AS Timestamp, measure  AS Measurement FROM sensor_measurements WHERE sensor='TEMP0' AND sensor_time between '2020-05-29 18:50:00' and '2020-05-29 18:53:00';
+
+2) Actuator Data
+SET search_path TO tack;
+SELECT actuator AS Nome, 
+CASE WHEN actuator_id=0 THEN 'ROOM1' WHEN actuator_id=1 THEN 'ROOM2' WHEN actuator_id=2 THEN 'WC2' WHEN actuator_id=3 THEN 'ROOM3' WHEN actuator_id=4 THEN 'ROOM4' WHEN actuator_id=5 THEN 'WC' WHEN actuator_id=6 THEN 'OFFI' WHEN actuator_id=7 THEN 'LROOM' WHEN actuator_id=8 THEN 'LAUN' WHEN actuator_id=9 THEN 'KITCH' ELSE 'ERRO' END AS room,
+actuator_state AS Estado
+FROM actuator ORDER BY actuator
+
+3) Configuration Data
+SET search_path TO tack;
+UPDATE house_configuration SET sensor1='TEMP0' WHERE div='ROOM1';
+UPDATE house_configuration SET sensor1='TEMP6' WHERE div='OFFI';
+SELECT sensor1 AS Sensor, div AS room FROM house_configuration WHERE sensor1='TEMP0' OR sensor1='TEMP6';
+
+4) Control Rules Data
+SET search_path TO tack;
+UPDATE file_rules SET value_to_compare=20 WHERE div='OFFI' AND actuator_name='COOL';
+SELECT file_line AS Rule, div as Room, sensor_name AS Sensor, operator, value_to_compare AS  Reference_Value, actuator_name AS Actuator, actuator_state AS State FROM file_rules WHERE div='OFFI' AND actuator_name='COOL'  ;
+
+5) Energy Data
+SET search_path TO tack;
+SELECT SUM(power*0.001*3/60) AS energy, time AS timestamp FROM energy WHERE time between '2020-05-29 18:50:00' and '2020-05-29 18:53:00' AND location='ROOM1'  GROUP BY time
+
+Medium Application Questions
+
+1) Sensor Data
+SET search_path TO tack;
+SELECT location AS room, AVG(measure) AS Average FROM sensor_measurements WHERE sensor_name='TEMP' AND sensor_time between '2020-05-29 22:50:00' and '2020-05-29 22:55:00' GROUP BY location;
+
+2) Actuator Data
+SET search_path TO tack;
+select 
+    actuator_id,
+    CASE WHEN actuator_id=0 THEN 'ROOM1' WHEN actuator_id=1 THEN 'ROOM2' WHEN actuator_id=2 THEN 'WC2' WHEN actuator_id=3 THEN 'ROOM3' WHEN actuator_id=4 THEN 'ROOM4' WHEN actuator_id=5 THEN 'WC' WHEN actuator_id=6 THEN 'OFFI' WHEN actuator_id=7 THEN 'LROOM' WHEN actuator_id=8 THEN 'LAUN' WHEN actuator_id=9 THEN 'KITCH' ELSE 'ERRO' END AS room,
+    count(*) filter(where actuator_state <> lag_actuator_state) as change
+from (
+    select 
+        actuator_state.*,
+        lag(actuator_state) 
+            over(partition by actuator_id, actuator order by actuator_time) lag_actuator_state
+    from actuator_state
+    where actuator_name='DEHUM'
+) actuator_state
+WHERE actuator_time between '2020-05-29 22:50:00' and '2020-05-29 22:55:00' 
+group by actuator_id
+
+3) Configuration Data
+SET search_path TO tack;
+SELECT div AS Room, COUNT(DISTINCT div_id) AS room_count, SUM(CASE WHEN sensor1!='' AND sensor2!='' AND sensor3!='' AND sensor4!='' THEN 4 WHEN sensor1!='' AND sensor2!='' AND sensor3!='' AND sensor4='' THEN 3 WHEN sensor1!='' AND sensor2!='' AND sensor3='' THEN 2 WHEN sensor1!='' AND sensor2='' THEN 1 ELSE 0 END) AS Sensor_Count FROM house_configuration GROUP BY div;
+
+4) Control Rules Data
+SET search_path TO tack;
+SELECT div AS room, COUNT(div) AS rules FROM file_rules GROUP BY div;
+
+5) Energy Data
+SET search_path TO tack;
+SELECT location AS room, SUM(power*0.001*5/60*0.1544) AS cost FROM energy WHERE time between '2020-05-29 22:50:00' and '2020-05-29 22:55:00' GROUP BY location
+
+Hard Application Questions
+
+1) Sensor Data
+SET search_path TO tack;
+SELECT location AS room, sensor_name AS sensor_type,  AVG(measure) AS Average FROM division, sensor_measurements WHERE sensor_time between '2020-05-29 23:25:00' and '2020-05-29 23:30:00' GROUP BY location,sensor_name;
+
+2) Actuator Data
+SET search_path TO tack;
+select  DISTINCT actuator as Actuator_Name, actuator_state as State, max(actuator_time)-min(actuator_time) AS Duration 
+from (select actuator_state.*,
+             row_number() over (partition by actuator order by actuator_time) as seqnum,
+             row_number() over (partition by actuator, actuator_state order by actuator_time) as seqnum_s
+      from actuator_state
+     ) actuator_state
+WHERE actuator_time between '2020-05-29 22:50:00' and '2020-05-29 22:55:00' 
+group by actuator, (seqnum- seqnum_s),actuator_state.actuator_state
+order by max(actuator_time) - min(actuator_time) desc, actuator
+limit 1;
+
+3) Configuration Data
+SET search_path TO tack;
+SELECT div AS room, SUM(CASE WHEN sensor1!='' AND sensor2!='' AND sensor3!='' AND sensor4!='' THEN 4 WHEN sensor1!='' AND sensor2!='' AND sensor3!='' AND sensor4='' THEN 3 WHEN sensor1!='' AND sensor2!='' AND sensor3='' THEN 2 WHEN sensor1!='' AND sensor2='' THEN 1 ELSE 0 END) AS sensor, SUM(CASE WHEN actuator1!='' AND actuator2!='' AND actuator3!='' AND actuator4!='' THEN 4 WHEN actuator1!='' AND actuator2!='' AND actuator3!='' AND actuator4='' THEN 3 WHEN actuator1!='' AND actuator2!='' AND actuator3='' THEN 2 WHEN actuator1!='' AND actuator2='' THEN 1 ELSE 0 END) AS actuator FROM house_configuration GROUP BY div;
+
+4) Control Rules Data
+SET search_path TO tack;
+SELECT file_rules.value_to_compare AS reference, sensor_measurements.sensor_time AS Timestamp, sensor_measurements.measure AS measurement FROM file_rules, sensor_measurements WHERE sensor_measurements.sensor_time between '2020-05-29 23:25:00' and '2020-05-29 23:25:30' AND sensor_measurements.sensor_name='TEMP' AND file_rules.sensor_name='TEMP' GROUP BY  sensor_measurements.sensor_time,file_rules.value_to_compare,sensor_measurements.measure ;
+
+5) Energy Data
+SET search_path TO tack;
+SELECT location AS room, SUM(power*0.001*5/60*0.11) AS offpeak, SUM(power*0.001*5/60*0.1870) AS peak FROM energy WHERE time between '2020-05-29 23:25:00' and '2020-05-29 23:30:00' GROUP BY location

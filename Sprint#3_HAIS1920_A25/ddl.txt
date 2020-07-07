@@ -1,0 +1,11 @@
+DROP TABLE house_configuration CASCADE;
+DROP TABLE file_rules CASCADE;
+CREATE TABLE house_configuration ( div VARCHAR(10) NOT NULL, div_id INTEGER, sensor1 VARCHAR(10), sensor2 VARCHAR(10), sensor3 VARCHAR(10), sensor4 VARCHAR(10), actuator1 VARCHAR(10), actuator2 VARCHAR(10), actuator3 VARCHAR(10), actuator4 VARCHAR(10), CONSTRAINT unique_id UNIQUE(div_id), PRIMARY KEY(div,div_id) );
+CREATE TABLE file_rules ( file_line INTEGER PRIMARY KEY, div VARCHAR(10), sensor_name VARCHAR(10), operator VARCHAR(3) NOT NULL, value_to_compare INTEGER, actuator_name VARCHAR(10), actuator_state BOOLEAN, start TIME, finish TIME );  
+CREATE TABLE IF NOT EXISTS house_sensor_historic ( div VARCHAR(10) NOT NULL, div_id INTEGER, sensor1 VARCHAR(10), sensor2 VARCHAR(10), sensor3 VARCHAR(10), sensor4 VARCHAR(10), time TIMESTAMP );
+CREATE TABLE IF NOT EXISTS division ( div VARCHAR(10), div_id INTEGER,FOREIGN KEY(div,div_id) REFERENCES house_configuration(div,div_id) );
+CREATE TABLE IF NOT EXISTS sensor ( location VARCHAR(10), sensor VARCHAR(10) PRIMARY KEY , sensor_name VARCHAR(10), sensor_id INTEGER, measure DOUBLE PRECISION );
+CREATE TABLE IF NOT EXISTS sensor_measurements ( location VARCHAR(10), sensor VARCHAR(10) REFERENCES sensor(sensor), sensor_name VARCHAR(10), sensor_id INTEGER, measure DOUBLE PRECISION, sensor_time TIMESTAMP );
+CREATE TABLE IF NOT EXISTS actuator ( actuator VARCHAR(10) PRIMARY KEY, actuator_name VARCHAR(10), actuator_id INTEGER, actuator_state BOOLEAN );
+CREATE TABLE IF NOT EXISTS actuator_state ( actuator VARCHAR(10) REFERENCES actuator(actuator), actuator_name VARCHAR(10), actuator_id INTEGER, actuator_state BOOLEAN, actuator_time TIMESTAMP );
+ALTER TABLE division ADD FOREIGN KEY(div,div_id) REFERENCES house_configuration(div,div_id);

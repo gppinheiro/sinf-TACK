@@ -1,0 +1,10 @@
+0- Quarto do bebe
+1- Quarto principal
+2- Casa de banho do quarto principal(adicionar se for necessário)
+3- Quarto dos hospedes
+4- Casa de banho do quarto dos hospedes(adicionar se for necesário)
+5- Casa de banho geral
+6- Escritorio
+7- Sala de estar
+8- Lavandaria
+9- Cozinha
